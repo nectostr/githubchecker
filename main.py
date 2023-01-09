@@ -20,7 +20,7 @@ print(f"{start=}, {end=}")
 
 def get_authors_branch(owner, repository_name, branch_name):
     print(f"Branch {branch_name}")
-    url_commits = f"https://api.github.com/repos/{owner}/{repository_name}/commits/{branch_name}"
+    url_commits = f"https://api.github.com/repos/{owner}/{repository_name}/commits?sha={branch_name}"
 
     r = re.get(url_commits, headers=headers)
 
