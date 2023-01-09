@@ -1,5 +1,8 @@
 import requests as re
-import datetime
+from datetime import datetime, timezone
+from dateutil import parser
+
+import pytz
 
 import config
 
@@ -10,24 +13,16 @@ headers = {
 }
 
 format = "%Y-%m-%dT%H:%M:%SZ"
-start = datetime.datetime.strptime(config.DATE_START, format)
-end = datetime.datetime.strptime(config.DATE_END, format)
+start = datetime.strptime(config.DATE_START, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.timezone('US/Pacific'))
+end = datetime.strptime(config.DATE_END, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.timezone('US/Pacific'))
 
+print(f"{start=}, {end=}")
 
-def get_authors(url):
-    """
-    Get authors from single github url
+def get_authors_branch(owner, repository_name, branch_name):
+    print(f"Branch {branch_name}")
+    url_commits = f"https://api.github.com/repos/{owner}/{repository_name}/commits/{branch_name}"
 
-    Args:
-        url (str): _description_
-
-    Raises:
-        Exception: _description_
-
-    Returns:
-        set: set of tuples - (commiters email, commiters nickname)
-    """
-    r = re.get(url, headers=headers)
+    r = re.get(url_commits, headers=headers)
 
     if r.status_code != 200:
         raise Exception(f"Error: {r.status_code}")
@@ -42,8 +37,12 @@ def get_authors(url):
         author_nikname = commit["author"]["name"]
         
 
-        cur = datetime.datetime.strptime(commit['committer']['date'], format)
+        cur = parser.parse(commit['committer']['date'])
+        # cur = cur.replace(tzinfo=timezone.utc)
+        cur = cur.astimezone(pytz.timezone('US/Pacific'))
+
         
+        print(f"What come from API {commit['committer']['date']},\n\t What I have after conv {cur}")
         if cur >= start and cur <= end:
             successeful_committers.add((author_email, author_nikname))
             
@@ -52,10 +51,43 @@ def get_authors(url):
 
     return successeful_committers
 
+def get_authors(owner, repository_name):
+    """
+    Get authors from single github url
+
+    Args:
+        url (str): _description_
+
+    Raises:
+        Exception: _description_
+
+    Returns:
+        set: set of tuples - (commiters email, commiters nickname)
+    """
+    
+    url_branches = f"https://api.github.com/repos/{owner}/{repository_name}/branches"
+    
+    r = re.get(url_branches, headers=headers)
+
+    if r.status_code != 200:
+        raise Exception(f"Error: {r.status_code}")
+    
+    obj = r.json()
+    committers = set()
+    for branch in obj:
+        successeful_committers = get_authors_branch(owner, repository_name, branch['name'])
+        committers.update(successeful_committers)
+    
+    return committers
+    
+    
+    
+    
+ 
+
 
 if __name__ == "__main__":
     owner = "nectostr"
     repository_name = "githubchecker"
-    url = f"https://api.github.com/repos/{owner}/{repository_name}/commits"
 
-    print(get_authors(url))
+    print(get_authors(owner, repository_name))
