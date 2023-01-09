@@ -1,7 +1,5 @@
 import requests as re
-from datetime import datetime, timezone
 from dateutil import parser
-
 import pytz
 
 import config
@@ -12,9 +10,8 @@ headers = {
     'X-GitHub-Api-Version': '2022-11-28',
 }
 
-format = "%Y-%m-%dT%H:%M:%SZ"
-start = datetime.strptime(config.DATE_START, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.timezone('US/Pacific'))
-end = datetime.strptime(config.DATE_END, "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.timezone('US/Pacific'))
+start = parser.parse(config.DATE_START).replace(tzinfo=pytz.timezone('US/Pacific'))
+end = parser.parse(config.DATE_END).replace(tzinfo=pytz.timezone('US/Pacific'))
 
 print(f"{start=}, {end=}")
 
@@ -38,7 +35,6 @@ def get_authors_branch(owner, repository_name, branch_name):
         
 
         cur = parser.parse(commit['committer']['date'])
-        # cur = cur.replace(tzinfo=timezone.utc)
         cur = cur.astimezone(pytz.timezone('US/Pacific'))
 
         
