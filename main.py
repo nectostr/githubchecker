@@ -2,24 +2,26 @@ import requests as re
 from dateutil import parser
 import pytz
 import os
+import argparse
 
 import pandas as pd
 
+
 import config
 
+# The version of API and the type of header hardcoded here
+# See https://docs.github.com/en/rest or README for additional info
 headers = {
     'Accept': 'application/vnd.github+json',
     'Authorization': f'Bearer {config.TOKEN}',
     'X-GitHub-Api-Version': '2022-11-28',
 }
 
-start = parser.parse(config.DATE_START).replace(tzinfo=pytz.timezone('US/Pacific')).isoformat()
-end = parser.parse(config.DATE_END).replace(tzinfo=pytz.timezone('US/Pacific')).isoformat()
 
-def get_authors_branch(owner, repository_name, branch_name):
-    print(f"Branch {branch_name}")
+def get_branch_commitors(owner, start_date:str, end_date:str, repository_name, branch_name):
+    # print(f"Branch {branch_name}")
     url_commits = f"https://api.github.com/repos/{owner}" \
-                  f"/{repository_name}/commits?sha={branch_name}&since={start}&until={end}"
+                  f"/{repository_name}/commits?sha={branch_name}&since={start_date}&until={end_date}"
 
     r = re.get(url_commits, headers=headers)
 
@@ -40,7 +42,7 @@ def get_authors_branch(owner, repository_name, branch_name):
         cur = cur.astimezone(pytz.timezone('US/Pacific'))
 
         
-        print(f"What come from API {commit['committer']['date']},\n\t What I have after conv {cur}")
+        # print(f"What come from API {commit['committer']['date']},\n\t What I have after conv {cur}")
         # if cur >= start and cur <= end:
         successeful_committers.add((author_email, author_nikname))
 
@@ -53,20 +55,7 @@ def get_authors_branch(owner, repository_name, branch_name):
     # are not very high for now (124 repos in total for me)
     return successeful_committers
 
-def get_authors_repo(owner, repository_name):
-    """
-    Get authors from single github url
-
-    Args:
-        url (str): _description_
-
-    Raises:
-        Exception: _description_
-
-    Returns:
-        set: set of tuples - (commiters email, commiters nickname)
-    """
-    
+def get_repo_commiters(owner, start_date:str, end_date:str, repository_name):
     url_branches = f"https://api.github.com/repos/{owner}/{repository_name}/branches"
     
     r = re.get(url_branches, headers=headers)
@@ -77,20 +66,20 @@ def get_authors_repo(owner, repository_name):
     obj = r.json()
     committers = set()
     for branch in obj:
-        successeful_committers = get_authors_branch(owner, repository_name, branch['name'])
+        successeful_committers = get_branch_commitors(owner, start_date, end_date, repository_name, branch['name'])
         committers.update(successeful_committers)
     
     return committers
 
-def get_authors_repos(owner:str="ucsb", repos_list:[list,None]=None):
-    if not repos_list:
-        repos_list = config.repos_list
+def get_author_repos_commiters(owner:str, start_date:str, end_date:str, repos_list:[list, None]=None, ):
 
     authors = set()
     for repository_name in repos_list:
-        authors.update(get_authors_repo(owner, repository_name))
+        authors.update(get_repo_commiters(owner, start_date, end_date, repository_name))
 
     return authors
+
+
 
 def get_list_of_repos(user:str, template:str):
     repos = []
@@ -120,6 +109,7 @@ def create_table(filename: str):
 
 
 def update_table(committers: set, df: pd.DataFrame, period_num=1, score=5):
+    # TODO: add period search based on empty/non existent columns with template
     emails = set(df["email"])
     for email, nickname in committers:
         if email not in emails:
@@ -128,25 +118,79 @@ def update_table(committers: set, df: pd.DataFrame, period_num=1, score=5):
         df.loc[df["email"] == email, config.column_template.format(period_num)] = score
         # print(f"Added score for {email}")
 
-def example_to_run():
+def run():
 
+    # Dates preprocessing
+    if config.DATE_END.lower() == "now":
+        end = pd.Timestamp.now(tz="US/Pacific")
+    else:
+        start = parser.parse(config.DATE_END).replace(tzinfo=pytz.timezone('US/Pacific'))
+
+    if config.DATE_START == None:
+        start = end - pd.Timedelta(days=7)
+    else:
+        end = parser.parse(config.DATE_START).replace(tzinfo=pytz.timezone('US/Pacific'))
+
+    start = start.isoformat()
+    end = end.isoformat()
+
+    # Repos list preprocessing
     if not config.repos_list:
-        config.repos_list = get_list_of_repos("ucsb", config.repos_template_name)
+        config.repos_list = get_list_of_repos(config.user_name, config.repos_template_name)
 
-    authors = get_authors_repos()
-    # File have to have email column for match up
-    if not os.path.exists(config.filename):
-        create_table(config.filename)
+    # Actual work, finally
+    authors = get_author_repos_commiters(config.user_name, start, end, config.repos_list)
 
-    df = pd.read_csv(config.filename)
-    update_table(authors, df)
-    df.to_csv(config.filename, index=False)
+    # Output
+    if config.output_format == "add":
+        # File have to have email column for match up
+        if not os.path.exists(config.filename):
+            create_table(config.filename)
+
+        df = pd.read_csv(config.filename)
+        update_table(authors, df)
+        df.to_csv(config.filename, index=False)
+    else:
+        with open(f"{config.filename}", "w") as f:
+            f.writelines([email + "\n" for email, i in authors])
+    print(f"File {config.filename} updated successfully")
 
 
 if __name__ == "__main__":
-    do_not_check_list = ["CS190B-TestLab2"]
-    repos = get_list_of_repos("ucsb", "cs190b")
-    print(repos)
-    repos = [i for i in repos if i not in do_not_check_list]
-    print(repos)
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--start", help="Start date in format YYYY-MM-DD HH:MM:SS", default=None,
+                        type=str, required=False)
+    arg_parser.add_argument("--end", help="End date in format YYYY-MM-DD HH:MM:SS or 'now'", default="now",
+                        type=str, required=False)
+    arg_parser.add_argument("--user", help="Organization or user name", default="ucsb", type=str, required=False)
+    arg_parser.add_argument("--template", help="Template for repos name", default="cs190b", type=str, required=False)
+    arg_parser.add_argument("--repos-list", help="Path to repos list if such created (newline-separated),"
+                                           " or `None` for automatic collection", default=None, required=False)
+
+    arg_parser.add_argument("--output-format", help="`add` for adding to existing csv file "
+                                              "or `list` to text saving the list of committed emails",
+                        choices=['add', 'list'], default="add", type=str, required=False)
+    arg_parser.add_argument("--filename", help="Filename to add scores to", default="my_class_grades.csv", required=False)
+    arg_parser.add_argument("--column-template", help="Template for column that will be used in table",
+                        default="GitHubcheck Week N", required=False)
+    arg_parser.add_argument("--score-for-period", help="Students score for doing a commit in a period", default=5,
+                        type=int, required=False)
+    args = arg_parser.parse_args()
+
+    # print(args)
+    if args.end != 'None':
+        config.DATE_START = args.start
+        config.DATE_END = args.end
+        config.user_name = args.user
+        config.repos_template_name = args.template
+        config.repos_list = args.repos_list
+        config.output_format = args.output_format
+        config.filename = args.filename
+        config.column_template = args.column_template
+        config.score_for_period = args.score_for_period
+    run()
+
+
+
+
 
