@@ -132,7 +132,9 @@ def run():
     # Repos list preprocessing
     if not config.repos_list:
         config.repos_list = get_list_of_repos(config.user_name, config.repos_template_name)
-
+    elif isinstance(config.repos_list, str):
+        with open(config.repos_list, "r") as f:
+            config.repos_list = f.read().splitlines()
     # Actual work, finally
     authors = get_author_repos_committers(config.user_name, start, end, config.repos_list)
 
@@ -140,7 +142,7 @@ def run():
     if config.output_format == "add":
         # File have to have email column for match up
         if not os.path.exists(config.filename):
-            create_table(config.filename)
+            raise FileNotFoundError(f"File {config.filename} is not there, sorry")
 
         df = pd.read_csv(config.filename)
         update_table(authors, df)
