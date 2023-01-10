@@ -40,10 +40,10 @@ Functions:
 - get_authors_repos
 
 ### Collect commits authors
-Functions that responsible for getting list of commits in all brances in target repo and parse and collect authers names
+Functions that responsible for getting list of commits in all branches in target repo and parse and collect authors names
 Functions:
 - get_authors_branch
 - get_authors_repo
 - get_authors_repos
 
-## P.S. I am genially sorry for not creating logger, but I am way to lazy for that
+## P.S. I am genially sorry for not creating logger, but I am way too lazy for that

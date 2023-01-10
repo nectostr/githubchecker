@@ -6,7 +6,6 @@ import argparse
 
 import pandas as pd
 
-
 import config
 
 # The version of API and the type of header hardcoded here
@@ -18,7 +17,7 @@ headers = {
 }
 
 
-def get_branch_commitors(owner, start_date:str, end_date:str, repository_name, branch_name):
+def get_branch_committers(owner, start_date: str, end_date: str, repository_name, branch_name):
     # print(f"Branch {branch_name}")
     url_commits = f"https://api.github.com/repos/{owner}" \
                   f"/{repository_name}/commits?sha={branch_name}&since={start_date}&until={end_date}"
@@ -30,58 +29,53 @@ def get_branch_commitors(owner, start_date:str, end_date:str, repository_name, b
 
     obj = r.json()
 
-    successeful_committers = set()
+    successful_committers = set()
 
     for commit in obj:
         commit = commit["commit"]
         author_email = commit["author"]["email"]
-        author_nikname = commit["author"]["name"]
-        
+        author_nickname = commit["author"]["name"]
 
-        cur = parser.parse(commit['committer']['date'])
-        cur = cur.astimezone(pytz.timezone('US/Pacific'))
-
-        
         # print(f"What come from API {commit['committer']['date']},\n\t What I have after conv {cur}")
-        # if cur >= start and cur <= end:
-        successeful_committers.add((author_email, author_nikname))
+
+        successful_committers.add((author_email, author_nickname))
 
         if commit['committer']['email'] != author_email:
-            successeful_committers.add((commit['committer']['email'], commit['committer']['name']))
+            successful_committers.add((commit['committer']['email'], commit['committer']['name']))
 
     # move return in while to speed up process (then only first page will be checked)
     # (since chances that some repo will be not in 100 top of updates
     # but will be updated in last week and available for checker user
     # are not very high for now (124 repos in total for me)
-    return successeful_committers
+    return successful_committers
 
-def get_repo_commiters(owner, start_date:str, end_date:str, repository_name):
+
+def get_repo_committers(owner, start_date: str, end_date: str, repository_name):
     url_branches = f"https://api.github.com/repos/{owner}/{repository_name}/branches"
-    
+
     r = re.get(url_branches, headers=headers)
 
     if r.status_code != 200:
         raise Exception(f"Error: {r.status_code}")
-    
+
     obj = r.json()
     committers = set()
     for branch in obj:
-        successeful_committers = get_branch_commitors(owner, start_date, end_date, repository_name, branch['name'])
-        committers.update(successeful_committers)
-    
+        successful_committers = get_branch_committers(owner, start_date, end_date, repository_name, branch['name'])
+        committers.update(successful_committers)
+
     return committers
 
-def get_author_repos_commiters(owner:str, start_date:str, end_date:str, repos_list:[list, None]=None, ):
 
+def get_author_repos_committers(owner: str, start_date: str, end_date: str, repos_list: list = None):
     authors = set()
     for repository_name in repos_list:
-        authors.update(get_repo_commiters(owner, start_date, end_date, repository_name))
+        authors.update(get_repo_committers(owner, start_date, end_date, repository_name))
 
     return authors
 
 
-
-def get_list_of_repos(user:str, template:str):
+def get_list_of_repos(user: str, template: str):
     repos = []
     got_repos_in_last_try = 100
     try_num = 1
@@ -103,6 +97,7 @@ def get_list_of_repos(user:str, template:str):
         got_repos_in_last_try = len(obj)
     return repos
 
+
 def create_table(filename: str):
     df = pd.DataFrame(columns=['email', 'GithubCheck Week 1'])
     df.to_csv(filename, index=False)
@@ -113,23 +108,23 @@ def update_table(committers: set, df: pd.DataFrame, period_num=1, score=5):
     emails = set(df["email"])
     for email, nickname in committers:
         if email not in emails:
-            print(f"Commiter {email}, aka {nickname} not found in grades")
+            print(f"Committer {email}, aka {nickname} not found in grades")
             continue
         df.loc[df["email"] == email, config.column_template.format(period_num)] = score
         # print(f"Added score for {email}")
 
-def run():
 
+def run():
     # Dates preprocessing
     if config.DATE_END.lower() == "now":
         end = pd.Timestamp.now(tz="US/Pacific")
     else:
-        start = parser.parse(config.DATE_END).replace(tzinfo=pytz.timezone('US/Pacific'))
+        end = parser.parse(config.DATE_END).replace(tzinfo=pytz.timezone('US/Pacific'))
 
-    if config.DATE_START == None:
+    if config.DATE_START is None:
         start = end - pd.Timedelta(days=7)
     else:
-        end = parser.parse(config.DATE_START).replace(tzinfo=pytz.timezone('US/Pacific'))
+        start = parser.parse(config.DATE_START).replace(tzinfo=pytz.timezone('US/Pacific'))
 
     start = start.isoformat()
     end = end.isoformat()
@@ -139,7 +134,7 @@ def run():
         config.repos_list = get_list_of_repos(config.user_name, config.repos_template_name)
 
     # Actual work, finally
-    authors = get_author_repos_commiters(config.user_name, start, end, config.repos_list)
+    authors = get_author_repos_committers(config.user_name, start, end, config.repos_list)
 
     # Output
     if config.output_format == "add":
@@ -159,22 +154,23 @@ def run():
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--start", help="Start date in format YYYY-MM-DD HH:MM:SS", default=None,
-                        type=str, required=False)
+                            type=str, required=False)
     arg_parser.add_argument("--end", help="End date in format YYYY-MM-DD HH:MM:SS or 'now'", default="now",
-                        type=str, required=False)
+                            type=str, required=False)
     arg_parser.add_argument("--user", help="Organization or user name", default="ucsb", type=str, required=False)
     arg_parser.add_argument("--template", help="Template for repos name", default="cs190b", type=str, required=False)
     arg_parser.add_argument("--repos-list", help="Path to repos list if such created (newline-separated),"
-                                           " or `None` for automatic collection", default=None, required=False)
+                                                 " or `None` for automatic collection", default=None, required=False)
 
     arg_parser.add_argument("--output-format", help="`add` for adding to existing csv file "
-                                              "or `list` to text saving the list of committed emails",
-                        choices=['add', 'list'], default="add", type=str, required=False)
-    arg_parser.add_argument("--filename", help="Filename to add scores to", default="my_class_grades.csv", required=False)
+                                                    "or `list` to text saving the list of committed emails",
+                            choices=['add', 'list'], default="add", type=str, required=False)
+    arg_parser.add_argument("--filename", help="Filename to add scores to", default="my_class_grades.csv",
+                            required=False)
     arg_parser.add_argument("--column-template", help="Template for column that will be used in table",
-                        default="GitHubcheck Week N", required=False)
+                            default="GitHub check Week N", required=False)
     arg_parser.add_argument("--score-for-period", help="Students score for doing a commit in a period", default=5,
-                        type=int, required=False)
+                            type=int, required=False)
     args = arg_parser.parse_args()
 
     # print(args)
@@ -189,8 +185,3 @@ if __name__ == "__main__":
         config.column_template = args.column_template
         config.score_for_period = args.score_for_period
     run()
-
-
-
-
-
