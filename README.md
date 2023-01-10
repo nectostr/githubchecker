@@ -1,6 +1,14 @@
 # Githubchecker
 ### A project to automatically check repos on updates in specific date range
 
+## General Logic
+1. *Find target*  
+Find a list of target repos (upload from file or find automatically by certain pattern)
+2. *Collect data*  
+Work through the repos and collect active committers in the certain period of time
+3. *Provide results*  
+Just print committers emails (option list) or add scores of the committers to existing csv file (add option)
+
 ## Initializing on start
 1. Get a token from https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token  
 Provide read writes on repos/projects and users for this token  
@@ -31,7 +39,7 @@ e.g.
 `python main.py --end=now --output-format=list --filename=test.txt`  
 or  
 `python main.py --start='2023-01-01 00:00:00' --end='2023-01-09 23:59:59' --filename=cs190b_grades.csv`  
-*Attention* Zero arguments will cause config-file run (see above)
+**Attention:** Zero arguments will cause config-file run (see above)
 
 ______________________________________________________________________________________
 ## Code structure

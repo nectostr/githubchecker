@@ -209,7 +209,7 @@ def run():
         df.to_csv(config.filename, index=False)
     else:
         with open(f"{config.filename}", "w") as f:
-            f.writelines([email + "\n" for email, i in authors])
+            f.writelines([f"{nick}, {email}\n" for email, nick in authors])
     print(f"File {config.filename} updated successfully")
 
 
