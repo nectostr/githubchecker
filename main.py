@@ -157,9 +157,13 @@ def update_table(committers: set, df: pd.DataFrame, period_num: int = 1, score: 
     Returns:
         None
     """
+    raise NotImplementedError("Canvas and emails issue")
     # TODO: add period search based on empty/non existent columns with template
     emails = set(df["email"])
     for email, nickname in committers:
+        # TODO: apparently canvas do not have emails, just usernames (part of ucsb emails)
+        # so we need to split our results on ucsb and non-ucsb, add ucsb, manuall search for non
+        # preferably force github to give ucsb emails
         if email not in emails:
             print(f"Committer {email}, aka {nickname} not found in grades")
             continue
