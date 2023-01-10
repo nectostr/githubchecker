@@ -146,8 +146,8 @@ def get_list_of_repos(user: str, template: str) -> list:
 
 def update_table(committers: set, df: pd.DataFrame, period_num: int = 1, score: int = 5):
     """
-    Updates score in target column for everyone who commited smth
-    Mathed by email
+    Updates score in target column for everyone who committed smth
+    Matched by email
     Args:
         committers: set of strings - emails
         df: pandas dataframe with table od scores
@@ -162,11 +162,15 @@ def update_table(committers: set, df: pd.DataFrame, period_num: int = 1, score: 
     emails = set(df["email"])
     for email, nickname in committers:
         # TODO: apparently canvas do not have emails, just usernames (part of ucsb emails)
-        # so we need to split our results on ucsb and non-ucsb, add ucsb, manuall search for non
+        # so we need to split our results on ucsb and non-ucsb, add ucsb, manually search for non
         # preferably force github to give ucsb emails
         if email not in emails:
             print(f"Committer {email}, aka {nickname} not found in grades")
             continue
+
+        if not config.score_per_period is None:
+            score = config.score_per_period
+
         df.loc[df["email"] == email, config.column_template.format(period_num)] = score
         # print(f"Added score for {email}")
 
@@ -215,14 +219,18 @@ def run():
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("--start", help="Start date in format YYYY-MM-DD HH:MM:SS", default=None,
+    arg_parser.add_argument("--start", help="Start date in format YYYY-MM-DD HH:MM:SS or "
+                                            "'None' for minus week from $end", default=None,
                             type=str, required=False)
     arg_parser.add_argument("--end", help="End date in format YYYY-MM-DD HH:MM:SS or 'now'", default="now",
                             type=str, required=False)
-    arg_parser.add_argument("--user", help="Organization or user name", default="ucsb", type=str, required=False)
-    arg_parser.add_argument("--template", help="Template for repos name", default="cs190b", type=str, required=False)
+    arg_parser.add_argument("--user", help="Legal GitHub organization or user name", default="ucsb",
+                            type=str, required=False)
     arg_parser.add_argument("--repos-list", help="Path to repos list if such created (newline-separated),"
                                                  " or `None` for automatic collection", default=None, required=False)
+    arg_parser.add_argument("--template", help="Template for repos name "
+                                               "(all repo names that contain this line will be targeted), "
+                                               "e.g. 'cs190b'", default="cs190b", type=str, required=False)
 
     arg_parser.add_argument("--output-format", help="`add` for adding to existing csv file "
                                                     "or `list` to text saving the list of committed emails",
@@ -246,7 +254,7 @@ if __name__ == "__main__":
         config.output_format = args.output_format
         config.filename = args.filename
         config.column_template = args.column_template
-        config.score_for_period = args.score_for_period
+        config.score_per_period = args.score_for_period
     else:
         print("No arguments provided, using config file")
     run()

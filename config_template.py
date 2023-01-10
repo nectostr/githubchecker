@@ -22,3 +22,5 @@ repos_template_name = "cs190b"  # for automatic repos collection
 output_format = "add"  # "add" for adding to existing csv file, "list" to text saving the list of committed emails
 column_template = "GitHub check Week {}"
 filename = "cs190b_grades.csv"
+
+score_per_period = 5  # For the automatic score update if that option picked

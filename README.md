@@ -29,7 +29,8 @@ Essentially to options - get the arguments to run from a config file or add them
 2. Edit the dates (see example in config)
 3. Edit the name of the file with future grades
 4. Edit everything else that needed to be specialized, see config_template for details
-5. run `python main.py`
+5. run `python main.py`  
+Please check the config or Option 2 for advances arguments explanation.
 
 ### OPTION 2. Script-style way
 **Better for docker and generally more sophisticated**
@@ -40,6 +41,28 @@ e.g.
 or  
 `python main.py --start='2023-01-01 00:00:00' --end='2023-01-09 23:59:59' --filename=cs190b_grades.csv`  
 **Attention:** Zero arguments will cause config-file run (see above)
+Use `--help` to see all the options
+```
+usage: main.py [-h] [--start START] [--end END] [--user USER] [--repos-list REPOS_LIST] [--template TEMPLATE] [--output-format {add,list}] [--filename FILENAME]
+               [--column-template COLUMN_TEMPLATE] [--score-for-period SCORE_FOR_PERIOD]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --start START         Start date in format YYYY-MM-DD HH:MM:SS or 'None' for minus week from $end
+  --end END             End date in format YYYY-MM-DD HH:MM:SS or 'now'
+  --user USER           Legal GitHub organization or user name
+  --repos-list REPOS_LIST
+                        Path to repos list if such created (newline-separated), or `None` for automatic collection
+  --template TEMPLATE   Template for repos name (all repo names that contain this line will be targeted), e.g. 'cs190b'
+  --output-format {add,list}
+                        `add` for adding to existing csv file or `list` to text saving the list of committed emails
+  --filename FILENAME   Filename to add scores to
+  --column-template COLUMN_TEMPLATE
+                        Template for column that will be used in table
+  --score-for-period SCORE_FOR_PERIOD
+                        Students score for doing a commit in a period
+
+```
 
 ______________________________________________________________________________________
 ## Code structure
