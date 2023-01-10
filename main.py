@@ -1,7 +1,9 @@
 import requests as re
+# TODO: add async lib to speed up process
 from dateutil import parser
 import pytz
 import os
+import sys
 import argparse
 
 import pandas as pd
@@ -17,7 +19,19 @@ headers = {
 }
 
 
-def get_branch_committers(owner, start_date: str, end_date: str, repository_name, branch_name):
+def get_branch_committers(owner: str, start_date: str, end_date: str, repository_name: str, branch_name: str) -> set:
+    """
+    Get list of committers to the branch in given repo in given period
+    Args:
+        owner: owner of the repo
+        start_date: ISO8601 date
+        end_date: ISO8601 date
+        repository_name: legal name of the repo
+        branch_name: name of a branch in repo
+
+    Returns:
+        set of pairs (email, github_nickname) for all committers
+    """
     # print(f"Branch {branch_name}")
     url_commits = f"https://api.github.com/repos/{owner}" \
                   f"/{repository_name}/commits?sha={branch_name}&since={start_date}&until={end_date}"
@@ -43,14 +57,21 @@ def get_branch_committers(owner, start_date: str, end_date: str, repository_name
         if commit['committer']['email'] != author_email:
             successful_committers.add((commit['committer']['email'], commit['committer']['name']))
 
-    # move return in while to speed up process (then only first page will be checked)
-    # (since chances that some repo will be not in 100 top of updates
-    # but will be updated in last week and available for checker user
-    # are not very high for now (124 repos in total for me)
     return successful_committers
 
 
-def get_repo_committers(owner, start_date: str, end_date: str, repository_name):
+def get_repo_committers(owner: str, start_date: str, end_date: str, repository_name: str) -> set:
+    """
+    Get list of committers to the repo in given period (in all branches)
+    Args:
+        owner: legal repo owner name
+        start_date: ISO8601 date
+        end_date: ISO8601 date
+        repository_name: legal repo name
+
+    Returns:
+        set of pairs (email, github_nickname) for all committers
+    """
     url_branches = f"https://api.github.com/repos/{owner}/{repository_name}/branches"
 
     r = re.get(url_branches, headers=headers)
@@ -67,7 +88,18 @@ def get_repo_committers(owner, start_date: str, end_date: str, repository_name):
     return committers
 
 
-def get_author_repos_committers(owner: str, start_date: str, end_date: str, repos_list: list = None):
+def get_author_repos_committers(owner: str, start_date: str, end_date: str, repos_list: list = None) -> set:
+    """
+    Get list of committers to the repos from target list in given period (in all branches)
+    Args:
+        owner: legal repo owner name
+        start_date: ISO8601 date
+        end_date: ISO8601 date
+        repos_list: list of repositories to check
+
+    Returns:
+        set of pairs (email, github_nickname) for all committers
+    """
     authors = set()
     for repository_name in repos_list:
         authors.update(get_repo_committers(owner, start_date, end_date, repository_name))
@@ -75,7 +107,16 @@ def get_author_repos_committers(owner: str, start_date: str, end_date: str, repo
     return authors
 
 
-def get_list_of_repos(user: str, template: str):
+def get_list_of_repos(user: str, template: str) -> list:
+    """
+    Get list of repos from user or organisation with given template in name
+    Args:
+        user: legal GitHub username
+        template: string template, e.g. "cs190b"
+
+    Returns:
+        list of strings - repos names
+    """
     repos = []
     got_repos_in_last_try = 100
     try_num = 1
@@ -95,15 +136,27 @@ def get_list_of_repos(user: str, template: str):
             if template in repo["name"].lower():
                 repos.append(repo["name"])
         got_repos_in_last_try = len(obj)
+
+    # move return in while to speed up process (then only first page will be checked)
+    # (since chances that some repo will be not in 100 top of updates
+    # but will be updated in last week and available for checker user
+    # are not very high for now (124 repos in total for me)
     return repos
 
 
-def create_table(filename: str):
-    df = pd.DataFrame(columns=['email', 'GithubCheck Week 1'])
-    df.to_csv(filename, index=False)
+def update_table(committers: set, df: pd.DataFrame, period_num: int = 1, score: int = 5):
+    """
+    Updates score in target column for everyone who commited smth
+    Mathed by email
+    Args:
+        committers: set of strings - emails
+        df: pandas dataframe with table od scores
+        period_num: Column number(of week) to update
+        score: Default score to add
 
-
-def update_table(committers: set, df: pd.DataFrame, period_num=1, score=5):
+    Returns:
+        None
+    """
     # TODO: add period search based on empty/non existent columns with template
     emails = set(df["email"])
     for email, nickname in committers:
@@ -115,6 +168,9 @@ def update_table(committers: set, df: pd.DataFrame, period_num=1, score=5):
 
 
 def run():
+    """
+    Main function
+    """
     # Dates preprocessing
     if config.DATE_END.lower() == "now":
         end = pd.Timestamp.now(tz="US/Pacific")
@@ -176,7 +232,7 @@ if __name__ == "__main__":
     args = arg_parser.parse_args()
 
     # print(args)
-    if args.end != 'None':
+    if len(sys.argv) > 2:
         config.DATE_START = args.start
         config.DATE_END = args.end
         config.user_name = args.user
@@ -186,4 +242,6 @@ if __name__ == "__main__":
         config.filename = args.filename
         config.column_template = args.column_template
         config.score_for_period = args.score_for_period
+    else:
+        print("No arguments provided, using config file")
     run()
