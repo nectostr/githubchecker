@@ -3,10 +3,13 @@
 
 ## Initializing on start
 1. Get a token from https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token  
-1.1. https://github.com/settings/tokens - authorize token for UCSB organization  
+Provide read writes on repos/projects and users for this token  
+See list in the end
+
+2. https://github.com/settings/tokens - authorize token for UCSB organization  
 TODO: check what permissions are really necessary
 
-2. Make sure python 3.6+ installed. Also install requirements
+3. Make sure python 3.6+ installed. Also install requirements
 (pandas only?)
 
 ## Usage
@@ -52,3 +55,12 @@ Functions:
 
 ## P.S. I am genuinely sorry for not creating logger, but I am way too lazy for that
 For now it is commented out prints
+
+## List of permissions for token
+I suggest giving the full rights with the thought of a future, but some "write" rights might be revoked
+Note that you and only you will have an access to this key, not me as an code author
+List of provided rights:
+- repo - Full control of private repositories 
+- admin:repo_hook - Full control of repository hooks 
+- user - Update ALL user data 
+- project - Full control of projects 

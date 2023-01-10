@@ -237,6 +237,7 @@ if __name__ == "__main__":
 
     # print(args)
     if len(sys.argv) > 2:
+        config.TOKEN = os.environ.get("GITHUB_TOKEN")
         config.DATE_START = args.start
         config.DATE_END = args.end
         config.user_name = args.user
