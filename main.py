@@ -1,6 +1,9 @@
 import requests as re
 from dateutil import parser
 import pytz
+import os
+
+import pandas as pd
 
 import config
 
@@ -43,7 +46,7 @@ def get_authors_branch(owner, repository_name, branch_name):
             successeful_committers.add((author_email, author_nikname))
             
             if commit['committer']['email'] != author_email:
-                successeful_committers.append((commit['committer']['email'], commit['committer']['name']))
+                successeful_committers.add((commit['committer']['email'], commit['committer']['name']))
 
     return successeful_committers
 
@@ -75,15 +78,36 @@ def get_authors(owner, repository_name):
         committers.update(successeful_committers)
     
     return committers
+
+def create_table(filename: str):
+    df = pd.DataFrame(columns=['email', 'GithubCheck Week 1'])
+    df.to_csv(filename, index=False)
     
     
+
+def update_table(committers: set, df: pd.DataFrame, period_num=1, score=5):
     
-    
- 
+    emails = set(df["email"])
+    for email, nickname in committers:
+        if email not in emails:
+            print(f"Commiter {email}, aka {nickname} not found in grades")
+            continue
+        df.loc[df["email"] == email,config.column_template.format(period_num)] = score
+        # print(f"Added score for {email}")
 
 
 if __name__ == "__main__":
-    owner = "nectostr"
-    repository_name = "githubchecker"
+    owner = "ucsb"
+    repository_name = "CS190B-Lab2-ckrintz"
 
-    print(get_authors(owner, repository_name))
+    authors = get_authors(owner, repository_name)
+    
+    # File have to have email column for match up
+    if not os.path.exists(config.filename):
+        create_table(config.filename)
+    
+    df = pd.read_csv(config.filename)
+    update_table(authors, df)
+    df.to_csv(config.filename, index=False)
+    
+    
